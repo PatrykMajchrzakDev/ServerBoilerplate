@@ -1,2 +1,6 @@
-.env
 node_modules
+.env
+dist
+error.log
+combined.log
+PAYMENTS.log
