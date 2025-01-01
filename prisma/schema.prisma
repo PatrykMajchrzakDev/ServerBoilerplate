@@ -1,8 +1,21 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["prismaSchemaFolder"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+/// Importing models from the `prisma/models` folder
+
+// ========================================================
+// ======================= COMMANDS =======================
+// ========================================================
+
+// == One time use when starting project
+// npx prisma generate
+
+// == To migrate schemas use
+// npx prisma migrate dev --name description
