@@ -1,0 +1,39 @@
+// User model
+model User {
+    id                String   @id @default(uuid())
+    name              String
+    email             String   @unique
+    password          String
+    isEmailVerified   Boolean  @default(false)
+    enable2FA         Boolean  @default(false)
+    emailNotification Boolean  @default(true)
+    twoFactorSecret   String?
+    createdAt         DateTime @default(now())
+    updatedAt         DateTime @updatedAt
+
+    sessions          Session[]
+    verificationCodes VerificationCode[]
+}
+
+// User session model
+model Session {
+    id        String   @id @default(uuid())
+    userId    String
+    userAgent String?
+    createdAt DateTime @default(now())
+    expiredAt DateTime
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// User's code used for user verification
+model VerificationCode {
+    id        String   @id @default(uuid())
+    userId    String
+    code      String   @unique
+    type      String
+    createdAt DateTime @default(now())
+    expiresAt DateTime
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
