@@ -1,4 +1,6 @@
-import { getEnv } from "@/common/utils/get-env";
+//Purpose of this file is to asign values to object properties and set some default values if needed
+
+import { getEnv } from "@/utils/get-env";
 
 const appConfig = () => ({
   // SERVER
