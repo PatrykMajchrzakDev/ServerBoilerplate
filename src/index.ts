@@ -1,10 +1,13 @@
 // Server modules
-import express, { Request, Response } from "express";
+import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
 import "dotenv/config";
 import passport from "passport";
 import cookieParser from "cookie-parser";
 import { config } from "@/config/app.config";
+import { errorHandler } from "@/middleware/errorHandler";
+import { HTTPSTATUS } from "@/config/http.config";
+import { asyncHandler } from "@/middleware/asyncHandler";
 
 const app = express();
 
@@ -40,9 +43,17 @@ app.use(express.urlencoded({ extended: true }));
 //
 
 // TEST routes
-app.get("/test", async (req: Request, res: Response) => {
-  res.json({ message: "Hello" });
-});
+app.get(
+  "/test",
+  asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+    res.status(HTTPSTATUS.OK).json({
+      message: "Hello",
+    });
+  })
+);
+
+//Server error handler - provides nice JSON - has to at the bottom!!!
+app.use(errorHandler);
 
 // <!-- ======================== -->
 // <!-- ===== SERVER START ===== -->
