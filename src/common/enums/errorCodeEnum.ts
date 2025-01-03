@@ -1,6 +1,6 @@
 //Purpose to serve most common error codes enums
 
-const enum errorCode {
+const enum ErrorCode {
   AUTH_EMAIL_ALREADY_EXISTS = "AUTH_EMAIL_ALREADY_EXISTS",
   AUTH_INVALID_TOKEN = "AUTH_INVALID_TOKEN",
   AUTH_USER_NOT_FOUND = "AUTH_USER_NOT_FOUND",
@@ -22,4 +22,4 @@ const enum errorCode {
   VERIFICATION_ERROR = "VERIFICATION_ERROR",
 }
 
-export { errorCode };
+export { ErrorCode };
