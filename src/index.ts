@@ -8,6 +8,8 @@ import { config } from "@/config/app.config";
 import { errorHandler } from "@/middleware/errorHandler";
 import { HTTPSTATUS } from "@/config/http.config";
 import { asyncHandler } from "@/middleware/asyncHandler";
+import { BadRequestException } from "./utils/CatchError";
+import { ErrorCode } from "./common/enums/errorCodeEnum";
 
 const app = express();
 
@@ -46,6 +48,7 @@ app.use(express.urlencoded({ extended: true }));
 app.get(
   "/test",
   asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+    throw new BadRequestException("Bad request", ErrorCode.ACCESS_FORBIDDEN);
     res.status(HTTPSTATUS.OK).json({
       message: "Hello",
     });
