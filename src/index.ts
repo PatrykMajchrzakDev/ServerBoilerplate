@@ -10,6 +10,7 @@ import { HTTPSTATUS } from "@/config/http.config";
 import { asyncHandler } from "@/middleware/asyncHandler";
 import { BadRequestException } from "./utils/CatchError";
 import { ErrorCode } from "./common/enums/errorCodeEnum";
+import authRoutes from "./modules/auth/auth.routes";
 
 const app = express();
 
@@ -41,8 +42,9 @@ app.use(express.urlencoded({ extended: true }));
 // <!-- ======================== -->
 // <!-- ======== ROUTING ======= -->
 // <!-- ======================== -->
-
+const BASE_PATH = config.BASE_PATH;
 //
+app.use(`${BASE_PATH}/auth`, authRoutes);
 
 // TEST routes
 app.get(
