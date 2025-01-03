@@ -2,22 +2,19 @@
 // Extends the built-in Error class to include HTTP status codes and optional error codes
 
 import { HTTPSTATUS, HttpStatusCode } from "@/config/http.config";
-import { errorCode } from "@/common/enums/errorCodeEnum";
+import { ErrorCode } from "@/common/enums/errorCodeEnum";
 
 export class AppError extends Error {
   public statusCode: HttpStatusCode;
   // Optional application-specific error code
-  public errorCode?: errorCode;
+  public errorCode?: ErrorCode;
 
   constructor(
-    // Default to 500 if no status code is provided
-    statusCode = HTTPSTATUS.INTERNAL_SERVER_ERROR,
-
     message: string,
-    errorCode?: errorCode
+    statusCode = HTTPSTATUS.INTERNAL_SERVER_ERROR, // Default to 500 if no status code is provided
+    errorCode?: ErrorCode
   ) {
-    // Call the base Error constructor with the provided message
-    super(message);
+    super(message); // Call the base Error constructor with the provided message
 
     // Asigns codes
     this.statusCode = statusCode;
