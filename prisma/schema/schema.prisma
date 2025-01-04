@@ -17,5 +17,8 @@ datasource db {
 // == One time use when starting project
 // npx prisma generate
 
+// DATABASE URL PASSWORD CAN'T HAVE SPECIAL SYMBOLS
+// EITHER REPLACE WITH "PERCENTAGE-ENCODINGS" OR REPLACE TO NORMAL
+
 // == To migrate schemas use
 // npx prisma migrate dev --name description

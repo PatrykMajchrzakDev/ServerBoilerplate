@@ -1,16 +1,18 @@
 // User model
 model User {
-    id                String   @id @default(uuid())
-    name              String
-    email             String   @unique
+    id                String             @id
+    name              String             @unique
+    email             String             @unique
     password          String
-    isEmailVerified   Boolean  @default(false)
-    enable2FA         Boolean  @default(false)
-    emailNotification Boolean  @default(true)
+    role              Role               @default(USER)
+    isEmailVerified   Boolean            @default(false)
+    enable2FA         Boolean            @default(false)
+    emailNotification Boolean            @default(true)
     twoFactorSecret   String?
-    createdAt         DateTime @default(now())
-    updatedAt         DateTime @updatedAt
-
+    createdAt         DateTime           @default(now())
+    updatedAt         DateTime           @updatedAt
+    provider          String             @default("local")
+    googleId          String?            @unique
     sessions          Session[]
     verificationCodes VerificationCode[]
 }
@@ -36,4 +38,13 @@ model VerificationCode {
     expiresAt DateTime
 
     user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// USER ROLES
+enum Role {
+    USER
+    ADMIN
+    MODERATOR
+    SUBSCRIBER
+    PRO
 }
