@@ -1,12 +1,14 @@
 import { ErrorCode } from "@/common/enums/errorCodeEnum";
 import { VerificationEnum } from "@/common/enums/verificationCodeEnum";
-import { RegisterDto } from "@/common/interface/auth.interface";
+import { LoginDto, RegisterDto } from "@/common/interface/auth.interface";
 import { BadRequestException } from "@/utils/CatchError";
-import { fortyFiveMinutesFromNow } from "@/utils/date-time";
+import { fortyFiveMinutesFromNow, thirtyDaysFromNow } from "@/utils/date-time";
 import { generateUniqueCode } from "@/utils/uuid";
 import { PrismaClient } from "@prisma/client";
 import crypto from "crypto";
-import { hashValue } from "@/utils/bcrypt";
+import jwt from "jsonwebtoken";
+import { hashValue, compareValue } from "@/utils/bcrypt";
+import { config } from "@/config/app.config";
 
 const prisma = new PrismaClient();
 
@@ -72,5 +74,78 @@ export class AuthService {
     // Sending verification email link
 
     return newUser;
+  }
+  // ================ LOGIN ================
+  public async login(loginData: LoginDto) {
+    // Destructure JSON data
+    const { email, password, userAgent } = loginData;
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    // Checks if user exists
+    if (!user) {
+      throw new BadRequestException(
+        "Invalid email or password",
+        ErrorCode.AUTH_USER_NOT_FOUND
+      );
+    }
+
+    // only local users can put in password so check if password exists
+    if (user.provider.toLowerCase() !== "local") {
+      throw new BadRequestException(
+        "This email is linked with 3rd Party Provider e.g. Google or Miscrosoft"
+      );
+    }
+
+    // Compares hashed user password with typed one by client
+    const isPasswordValid = await compareValue(password, user.password);
+
+    // Throw error is wrong password
+    if (!isPasswordValid) {
+      throw new BadRequestException(
+        "Invalid email or password",
+        ErrorCode.AUTH_USER_NOT_FOUND
+      );
+    }
+
+    // Creates new session for logged in user (lasts 30 days)
+    const session = await prisma.session.create({
+      data: {
+        userId: user.id,
+        userAgent,
+        expiredAt: thirtyDaysFromNow(),
+      },
+    });
+
+    // Creates new access token for user
+    const accessToken = jwt.sign(
+      {
+        userId: user.id,
+        sessionId: session.id,
+      },
+      config.JWT_SECRET,
+      {
+        audience: ["user"],
+        expiresIn: config.JWT_EXPIRES_IN,
+      }
+    );
+
+    // Refreshes existing user token if old exists
+    const refreshToken = jwt.sign(
+      {
+        userId: user.id,
+        sessionId: session.id,
+      },
+      config.JWT_REFRESH_SECRET,
+      {
+        audience: ["user"],
+        expiresIn: config.JWT_REFRESH_EXPIRES_IN,
+      }
+    );
+    return {
+      user,
+      accessToken,
+      refreshToken,
+      mfaRequired: false,
+    };
   }
 }
