@@ -92,7 +92,8 @@ export class AuthService {
     // only local users can put in password so check if password exists
     if (user.provider.toLowerCase() !== "local") {
       throw new BadRequestException(
-        "This email is linked with 3rd Party Provider e.g. Google or Miscrosoft"
+        "This email is linked with 3rd Party Provider e.g. Google or Miscrosoft",
+        ErrorCode.AUTH_EMAIL_ALREADY_EXISTS
       );
     }
 
