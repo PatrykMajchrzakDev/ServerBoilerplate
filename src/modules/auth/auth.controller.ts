@@ -9,7 +9,12 @@ import {
   registerSchema,
 } from "@/common/validation/auth.validator";
 import { stripUserToFrontend } from "@/utils/destructureResponse";
-import { setAuthenticationCookies } from "@/utils/cookie";
+import {
+  getAccessTokenCookieOptions,
+  getRefreshTokenCookieOptions,
+  setAuthenticationCookies,
+} from "@/utils/cookie";
+import { UnauthorizedException } from "@/utils/CatchError";
 
 // Parent class invoking auth
 export class AuthController {
@@ -57,6 +62,36 @@ export class AuthController {
           user: stripUserToFrontend(user),
           mfaRequired,
         });
+    }
+  );
+
+  // =========== REFRESH TOKEN =============
+  public refreshToken = asyncHandler(
+    async (req: Request, res: Response): Promise<any> => {
+      // gets variable from cookies
+      const refreshToken = req.cookies.refreshToken as string | undefined;
+      if (!refreshToken) {
+        throw new UnauthorizedException("Missing refresh token");
+      }
+
+      // Destructure from given arguments
+      const { accessToken, newRefreshToken } =
+        await this.authService.refreshToken(refreshToken);
+
+      // Sets new refresh token
+      if (newRefreshToken) {
+        res.cookie(
+          "refreshToken",
+          newRefreshToken,
+          getRefreshTokenCookieOptions()
+        );
+      }
+
+      // Return access token
+      return res
+        .status(HTTPSTATUS.OK)
+        .cookie("accessToken", accessToken, getAccessTokenCookieOptions())
+        .json({ message: "Refresh access token successfully" });
     }
   );
 }
