@@ -27,7 +27,8 @@ export const errorHandler: ErrorRequestHandler = (
 ): any => {
   console.error(`Error occured on PATH: ${req.path}`, error);
 
-  // Remove cookies if request path matches refresh cookie path
+  // If requests path is for refresh token and there is error which i caught here
+  // then remove cookies (refresh token cookie is missing / expired)
   if (req.path === REFRESH_PATH) {
     clearAuthenticationCookies(res);
   }
