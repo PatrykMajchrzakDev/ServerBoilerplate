@@ -1,14 +1,25 @@
 import { ErrorCode } from "@/common/enums/errorCodeEnum";
 import { VerificationEnum } from "@/common/enums/verificationCodeEnum";
 import { LoginDto, RegisterDto } from "@/common/interface/auth.interface";
-import { BadRequestException } from "@/utils/CatchError";
-import { fortyFiveMinutesFromNow, thirtyDaysFromNow } from "@/utils/date-time";
+import { BadRequestException, UnauthorizedException } from "@/utils/CatchError";
+import {
+  ONE_DAY_IN_MS,
+  calculateExpirationDate,
+  fortyFiveMinutesFromNow,
+  thirtyDaysFromNow,
+} from "@/utils/date-time";
 import { generateUniqueCode } from "@/utils/uuid";
 import { PrismaClient } from "@prisma/client";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { hashValue, compareValue } from "@/utils/bcrypt";
 import { config } from "@/config/app.config";
+import {
+  RefreshTokenPayload,
+  refreshTokenSignOptions,
+  signJwtToken,
+  verifyJwtToken,
+} from "@/utils/jwt";
 
 const prisma = new PrismaClient();
 
@@ -75,7 +86,7 @@ export class AuthService {
 
     return newUser;
   }
-  // ================ LOGIN ================
+  // ================= LOGIN ==================
   public async login(loginData: LoginDto) {
     // Destructure JSON data
     const { email, password, userAgent } = loginData;
@@ -118,35 +129,82 @@ export class AuthService {
     });
 
     // Creates new access token for user
-    const accessToken = jwt.sign(
-      {
-        userId: user.id,
-        sessionId: session.id,
-      },
-      config.JWT_SECRET,
-      {
-        audience: ["user"],
-        expiresIn: config.JWT_EXPIRES_IN,
-      }
-    );
+    const accessToken = signJwtToken({
+      userId: user.id,
+      sessionId: session.id,
+    });
 
     // Refreshes existing user token if old exists
-    const refreshToken = jwt.sign(
+    const refreshToken = signJwtToken(
       {
-        userId: user.id,
         sessionId: session.id,
       },
-      config.JWT_REFRESH_SECRET,
-      {
-        audience: ["user"],
-        expiresIn: config.JWT_REFRESH_EXPIRES_IN,
-      }
+      refreshTokenSignOptions
     );
+
     return {
       user,
       accessToken,
       refreshToken,
       mfaRequired: false,
+    };
+  }
+
+  // ============ REFRESH TOKEN ===============
+  public async refreshToken(refreshToken: string) {
+    // Payload is returned if everything was ok. Here I pass refresh token
+    // and refresh token secret to verify provided token
+    const { payload } = verifyJwtToken<RefreshTokenPayload>(refreshToken, {
+      secret: refreshTokenSignOptions.secret,
+    });
+
+    if (!payload) {
+      throw new UnauthorizedException("Invalid refresh token");
+    }
+
+    // Finds user session
+    const session = await prisma.session.findUnique({
+      where: { id: payload.sessionId },
+    });
+    const now = Date.now();
+
+    if (!session) {
+      throw new UnauthorizedException("Session does not exist");
+    }
+
+    if (session.expiredAt.getTime() < now) {
+      throw new UnauthorizedException("Session expired");
+    }
+
+    // Checks if session require refresh
+    const sessionRequireRefresh =
+      session.expiredAt.getTime() - now < ONE_DAY_IN_MS;
+
+    // If refresh is required then update time in DB
+    if (sessionRequireRefresh) {
+      await prisma.session.update({
+        where: { id: payload.sessionId },
+        data: {
+          expiredAt: calculateExpirationDate(config.JWT_REFRESH_EXPIRES_IN),
+        },
+      });
+    }
+
+    // If refresh was required then sign with jwt
+    const newRefreshToken = sessionRequireRefresh
+      ? signJwtToken({ sessionId: session.id }, refreshTokenSignOptions)
+      : undefined;
+
+    // Check access token and sign with jwt
+    const accessToken = signJwtToken({
+      userId: session.userId,
+      sessionId: session.id,
+    });
+
+    // Return both access and refresh tokens
+    return {
+      accessToken,
+      newRefreshToken,
     };
   }
 }
