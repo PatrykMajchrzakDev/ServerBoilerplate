@@ -7,6 +7,7 @@ import { HTTPSTATUS } from "@/config/http.config";
 import {
   loginSchema,
   registerSchema,
+  verificationEmailSchema,
 } from "@/common/validation/auth.validator";
 import { stripUserToFrontend } from "@/utils/destructureResponse";
 import {
@@ -25,7 +26,7 @@ export class AuthController {
   }
 
   // Validates JSON, runs REGISTER method from ./auth.service.ts
-  // and returns message with object if successfull.
+  // and returns message with object if successful.
 
   // ============== REGISTER ===============
   public register = asyncHandler(
@@ -92,6 +93,21 @@ export class AuthController {
         .status(HTTPSTATUS.OK)
         .cookie("accessToken", accessToken, getAccessTokenCookieOptions())
         .json({ message: "Refresh access token successfully" });
+    }
+  );
+
+  // ============ VERIFY EMAIL =============
+  public verifyEmail = asyncHandler(
+    async (req: Request, res: Response): Promise<any> => {
+      const { code } = verificationEmailSchema.parse(req.body);
+
+      // Runs verifyEmail fn with provided arg
+      await this.authService.verifyEmail(code);
+
+      // Returns status and message when successfully verified
+      return res.status(HTTPSTATUS.OK).json({
+        message: "Email verified successfully",
+      });
     }
   );
 }

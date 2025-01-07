@@ -15,6 +15,8 @@ model User {
     googleId          String?            @unique
     sessions          Session[]
     verificationCodes VerificationCode[]
+
+    @@index([email])
 }
 
 // User session model
@@ -26,6 +28,8 @@ model Session {
     expiredAt DateTime
 
     user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId])
 }
 
 // User's code used for user verification
