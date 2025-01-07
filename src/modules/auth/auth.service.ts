@@ -1,7 +1,11 @@
 import { ErrorCode } from "@/common/enums/errorCodeEnum";
 import { VerificationEnum } from "@/common/enums/verificationCodeEnum";
 import { LoginDto, RegisterDto } from "@/common/interface/auth.interface";
-import { BadRequestException, UnauthorizedException } from "@/utils/CatchError";
+import {
+  BadRequestException,
+  NotFoundException,
+  UnauthorizedException,
+} from "@/utils/CatchError";
 import {
   ONE_DAY_IN_MS,
   calculateExpirationDate,
@@ -26,7 +30,7 @@ const prisma = new PrismaClient();
 // THIS ENTIRE AuthService CLASS HOLDS ALL METHODS USED FOR USER AUTHENTICATION
 
 export class AuthService {
-  // ================ REGISTER ================
+  // ==================== REGISTER ====================
   public async register(registerData: RegisterDto) {
     const { name, email, password } = registerData;
 
@@ -86,7 +90,7 @@ export class AuthService {
 
     return newUser;
   }
-  // ================= LOGIN ==================
+  // ===================== LOGIN ======================
   public async login(loginData: LoginDto) {
     // Destructure JSON data
     const { email, password, userAgent } = loginData;
@@ -103,7 +107,7 @@ export class AuthService {
     // only local users can put in password so check if password exists
     if (user.provider.toLowerCase() !== "local") {
       throw new BadRequestException(
-        "This email is linked with 3rd Party Provider e.g. Google or Miscrosoft",
+        "This email is linked with 3rd Party Provider e.g. Google or Microsoft",
         ErrorCode.AUTH_EMAIL_ALREADY_EXISTS
       );
     }
@@ -118,6 +122,11 @@ export class AuthService {
         ErrorCode.AUTH_USER_NOT_FOUND
       );
     }
+
+    // Delete all previous sessions so db is not cluttered with previous user sessions
+    await prisma.session.deleteMany({
+      where: { userId: user.id },
+    });
 
     // Creates new session for logged in user (lasts 30 days)
     const session = await prisma.session.create({
@@ -150,7 +159,7 @@ export class AuthService {
     };
   }
 
-  // ============ REFRESH TOKEN ===============
+  // ================ REFRESH TOKEN ===================
   public async refreshToken(refreshToken: string) {
     // Payload is returned if everything was ok. Here I pass refresh token
     // and refresh token secret to verify provided token
@@ -205,6 +214,42 @@ export class AuthService {
     return {
       accessToken,
       newRefreshToken,
+    };
+  }
+
+  // ================= VERIFY EMAIL ===================
+  public async verifyEmail(code: string) {
+    // Find provided code if exists in db
+    const validCode = await prisma.verificationCode.findUnique({
+      where: { code },
+    });
+
+    // Error if code does not exists in db
+    if (!validCode || validCode.expiresAt < new Date(Date.now())) {
+      throw new BadRequestException("Invalid or expired verification code");
+    }
+
+    // Update user property to true if code matches with provided code
+    const updatedUser = await prisma.user.update({
+      where: { id: validCode.userId },
+      data: { isEmailVerified: true },
+    });
+
+    // Throw error if could not update
+    if (!updatedUser) {
+      throw new BadRequestException(
+        "Unable to verify email address",
+        ErrorCode.VALIDATION_ERROR
+      );
+    }
+
+    // Deleting the verification code after successful verification
+    await prisma.verificationCode.delete({
+      where: { id: validCode.id },
+    });
+
+    return {
+      user: updatedUser,
     };
   }
 }
