@@ -18,6 +18,10 @@ const appConfig = () => ({
   JWT_EXPIRES_IN: getEnv("JWT_EXPIRES_IN", "1h"),
   JWT_REFRESH_SECRET: getEnv("JWT_REFRESH_SECRET"),
   JWT_REFRESH_EXPIRES_IN: getEnv("JWT_REFRESH_EXPIRES_IN", "30d"),
+
+  // SERVICES
+  RESEND_EMAIL_API_KEY: getEnv("RESEND_EMAIL_API_KEY"),
+  MAILER_SENDER: getEnv("MAILER_SENDER"),
 });
 
 export const config = appConfig();
