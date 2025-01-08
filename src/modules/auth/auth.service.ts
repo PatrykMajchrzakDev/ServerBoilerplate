@@ -24,6 +24,8 @@ import {
   signJwtToken,
   verifyJwtToken,
 } from "@/utils/jwt";
+import { sendEmail } from "@/services/mail/mailer";
+import { verifyEmailTemplate } from "@/services/mail/templates/template";
 
 const prisma = new PrismaClient();
 
@@ -85,8 +87,12 @@ export class AuthService {
       },
     });
 
-    // TBD
     // Sending verification email link
+    const verificationUrl = `${config.FRONTEND_BASE_URL}/confirm-account?code=${userVerificationCode.code}`;
+    await sendEmail({
+      to: newUser.email,
+      ...verifyEmailTemplate(verificationUrl),
+    });
 
     return newUser;
   }
