@@ -3,13 +3,17 @@ import { VerificationEnum } from "@/common/enums/verificationCodeEnum";
 import { LoginDto, RegisterDto } from "@/common/interface/auth.interface";
 import {
   BadRequestException,
+  HttpException,
+  InternalServerException,
   NotFoundException,
   UnauthorizedException,
 } from "@/utils/CatchError";
 import {
   ONE_DAY_IN_MS,
+  anHourFromNow,
   calculateExpirationDate,
   fortyFiveMinutesFromNow,
+  tenMinutesAgo,
   thirtyDaysFromNow,
 } from "@/utils/date-time";
 import { generateUniqueCode } from "@/utils/uuid";
@@ -25,7 +29,11 @@ import {
   verifyJwtToken,
 } from "@/utils/jwt";
 import { sendEmail } from "@/services/mail/mailer";
-import { verifyEmailTemplate } from "@/services/mail/templates/template";
+import {
+  passwordResetTemplate,
+  verifyEmailTemplate,
+} from "@/services/mail/templates/template";
+import { HTTPSTATUS } from "@/config/http.config";
 
 const prisma = new PrismaClient();
 
@@ -256,6 +264,68 @@ export class AuthService {
 
     return {
       user: updatedUser,
+    };
+  }
+
+  // =============== FORGOT PASSWORD ==================
+  public async forgotPassword(email: string) {
+    // Get user from provided email
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    // Return error if user does not exist
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    // Check mail rate limit. It's set to 2 emails per 3 or 10mins
+    // const timeAgo = threeMinutesAgo()
+    const timeAgo = tenMinutesAgo();
+    const maxAttempts = 2;
+
+    // Count how many times user in the past "time ago" created forgot password emails
+    const count = await prisma.verificationCode.count({
+      where: {
+        userId: user.id,
+        type: VerificationEnum.PASSWORD_RESET,
+        createdAt: { gt: timeAgo },
+      },
+    });
+
+    // If created over 2 in the last "time ago" then throw error
+    if (count >= maxAttempts) {
+      throw new HttpException(
+        "Too many requests. Try again later",
+        HTTPSTATUS.TOO_MANY_REQUESTS,
+        ErrorCode.AUTH_TOO_MANY_ATTEMPTS
+      );
+    }
+
+    const expiresAt = anHourFromNow();
+    const validCode = await prisma.verificationCode.create({
+      data: {
+        userId: user.id,
+        type: VerificationEnum.PASSWORD_RESET,
+        expiresAt: expiresAt,
+        code: generateUniqueCode(),
+      },
+    });
+
+    const resetLink = `${config.FRONTEND_BASE_URL}/reset-password?code=${
+      validCode.code
+    }&exp=${expiresAt.getTime()}`;
+
+    const { data, error } = await sendEmail({
+      to: user.email,
+      ...passwordResetTemplate(resetLink),
+    });
+
+    if (!data?.id) {
+      throw new InternalServerException(`${error?.name} ${error?.message}`);
+    }
+
+    return {
+      url: resetLink,
+      emailId: data.id,
     };
   }
 }
