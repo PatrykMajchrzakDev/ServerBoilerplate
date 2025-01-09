@@ -13,6 +13,7 @@ import {
 } from "@/common/validation/auth.validator";
 import { stripUserToFrontend } from "@/utils/destructureResponse";
 import {
+  clearAuthenticationCookies,
   getAccessTokenCookieOptions,
   getRefreshTokenCookieOptions,
   setAuthenticationCookies,
@@ -123,6 +124,20 @@ export class AuthController {
 
       return res.status(HTTPSTATUS.OK).json({
         message: "Password reset email sent",
+      });
+    }
+  );
+
+  // =========== RESET PASSWORD ============
+  public resetPassword = asyncHandler(
+    async (req: Request, res: Response): Promise<any> => {
+      const body = resetPasswordSchema.parse(req.body);
+
+      await this.authService.resetPassword(body);
+
+      // Clear cookies and return JSON
+      return clearAuthenticationCookies(res).status(HTTPSTATUS.OK).json({
+        message: "Reset password successful",
       });
     }
   );
