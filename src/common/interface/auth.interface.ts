@@ -18,6 +18,11 @@ export interface LoginDto {
   userAgent?: string;
 }
 
+export interface resetPasswordDto {
+  password: string;
+  verificationCode: string;
+}
+
 // ========================================================
 // ================== USER RELATED STUFF ==================
 // ========================================================
