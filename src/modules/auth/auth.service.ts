@@ -1,6 +1,10 @@
 import { ErrorCode } from "@/common/enums/errorCodeEnum";
 import { VerificationEnum } from "@/common/enums/verificationCodeEnum";
-import { LoginDto, RegisterDto } from "@/common/interface/auth.interface";
+import {
+  LoginDto,
+  RegisterDto,
+  resetPasswordDto,
+} from "@/common/interface/auth.interface";
 import {
   BadRequestException,
   HttpException,
@@ -34,6 +38,7 @@ import {
   verifyEmailTemplate,
 } from "@/services/mail/templates/template";
 import { HTTPSTATUS } from "@/config/http.config";
+import { updateV1State } from "uuid/dist/cjs/v1";
 
 const prisma = new PrismaClient();
 
@@ -300,7 +305,10 @@ export class AuthService {
       );
     }
 
+    // Get one hour from one date
     const expiresAt = anHourFromNow();
+
+    // Create verification code and push to db
     const validCode = await prisma.verificationCode.create({
       data: {
         userId: user.id,
@@ -310,22 +318,74 @@ export class AuthService {
       },
     });
 
+    // Link to frontend
     const resetLink = `${config.FRONTEND_BASE_URL}/reset-password?code=${
       validCode.code
     }&exp=${expiresAt.getTime()}`;
 
+    // Send email with link to reset password
     const { data, error } = await sendEmail({
       to: user.email,
       ...passwordResetTemplate(resetLink),
     });
 
+    // Throw error if email could not be sent
     if (!data?.id) {
       throw new InternalServerException(`${error?.name} ${error?.message}`);
     }
 
+    // Return link and email id
     return {
       url: resetLink,
       emailId: data.id,
     };
+  }
+
+  // ================ RESET PASSWORD ==================
+  public async resetPassword({ password, verificationCode }: resetPasswordDto) {
+    // find code and check if it's code for password reset
+    // and if it hasn't expired
+    const validCode = await prisma.verificationCode.findUnique({
+      where: {
+        code: verificationCode,
+        type: VerificationEnum.PASSWORD_RESET,
+        expiresAt: { gt: new Date() },
+      },
+    });
+
+    // Throw error if invalid or expired code
+    if (!validCode) {
+      throw new NotFoundException("Invalid or expired verification code");
+    }
+
+    // Hash new password
+    const hashedPassword = await hashValue(password);
+
+    // Update user's password in db
+    const updatedUser = await prisma.user.update({
+      where: {
+        id: validCode.userId,
+      },
+      data: {
+        password: hashedPassword,
+      },
+    });
+
+    if (!updatedUser) {
+      throw new BadRequestException("Failed to reset password");
+    }
+
+    // Deleting the verification code after successful password reset
+    await prisma.verificationCode.deleteMany({
+      where: {
+        userId: validCode.userId,
+        type: VerificationEnum.PASSWORD_RESET,
+      },
+    });
+
+    // Delete all sessions for the user after password reset
+    await prisma.session.deleteMany({ where: { userId: updatedUser.id } });
+
+    return { user: updatedUser };
   }
 }
