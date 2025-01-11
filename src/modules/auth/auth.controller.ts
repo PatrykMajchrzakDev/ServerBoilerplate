@@ -18,7 +18,7 @@ import {
   getRefreshTokenCookieOptions,
   setAuthenticationCookies,
 } from "@/utils/cookie";
-import { UnauthorizedException } from "@/utils/CatchError";
+import { NotFoundException, UnauthorizedException } from "@/utils/CatchError";
 
 // Parent class invoking auth
 export class AuthController {
@@ -138,6 +138,24 @@ export class AuthController {
       // Clear cookies and return JSON
       return clearAuthenticationCookies(res).status(HTTPSTATUS.OK).json({
         message: "Reset password successful",
+      });
+    }
+  );
+
+  // ================ LOGOUT ===============
+  public logout = asyncHandler(
+    async (req: Request, res: Response): Promise<any> => {
+      const sessionId = req.sessionId;
+
+      if (!sessionId) {
+        throw new NotFoundException("Session is invalid");
+      }
+
+      await this.authService.logout(sessionId);
+
+      // Clear cookies and return JSON
+      return clearAuthenticationCookies(res).status(HTTPSTATUS.OK).json({
+        message: "User logged out successfully",
       });
     }
   );
