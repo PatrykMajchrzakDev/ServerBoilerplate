@@ -2,7 +2,6 @@
 import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
 import "dotenv/config";
-import passport from "passport";
 import cookieParser from "cookie-parser";
 import { config } from "@/config/app.config";
 import { errorHandler } from "@/middleware/errorHandler";
@@ -11,6 +10,7 @@ import { asyncHandler } from "@/middleware/asyncHandler";
 import { BadRequestException } from "./utils/CatchError";
 import { ErrorCode } from "./common/enums/errorCodeEnum";
 import authRoutes from "./modules/auth/auth.routes";
+import passport from "./middleware/passport";
 
 const app = express();
 
@@ -22,7 +22,7 @@ const app = express();
 app.use(cookieParser());
 
 // Initialize passport and session
-// app.use(passport.initialize());
+app.use(passport.initialize());
 // app.use(passport.session());
 
 // Automatically convert the body of any request to server as JSON
@@ -50,7 +50,7 @@ app.use(`${BASE_PATH}/auth`, authRoutes);
 app.get(
   "/test",
   asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
-    throw new BadRequestException("Bad request", ErrorCode.ACCESS_FORBIDDEN);
+    // throw new BadRequestException("Bad request", ErrorCode.ACCESS_FORBIDDEN);
     res.status(HTTPSTATUS.OK).json({
       message: "Hello",
     });
