@@ -38,7 +38,6 @@ import {
   verifyEmailTemplate,
 } from "@/services/mail/templates/template";
 import { HTTPSTATUS } from "@/config/http.config";
-import { updateV1State } from "uuid/dist/cjs/v1";
 
 const prisma = new PrismaClient();
 
@@ -387,5 +386,10 @@ export class AuthService {
     await prisma.session.deleteMany({ where: { userId: updatedUser.id } });
 
     return { user: updatedUser };
+  }
+
+  // =================== LOGOUT =======================
+  public async logout(sessionId: string) {
+    return await prisma.session.deleteMany({ where: { id: sessionId } });
   }
 }
