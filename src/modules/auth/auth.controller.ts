@@ -13,11 +13,12 @@ import {
 } from "@/common/validation/auth.validator";
 import { stripUserToFrontend } from "@/utils/destructureResponse";
 import {
+  clearAuthenticationCookies,
   getAccessTokenCookieOptions,
   getRefreshTokenCookieOptions,
   setAuthenticationCookies,
 } from "@/utils/cookie";
-import { UnauthorizedException } from "@/utils/CatchError";
+import { NotFoundException, UnauthorizedException } from "@/utils/CatchError";
 
 // Parent class invoking auth
 export class AuthController {
@@ -123,6 +124,38 @@ export class AuthController {
 
       return res.status(HTTPSTATUS.OK).json({
         message: "Password reset email sent",
+      });
+    }
+  );
+
+  // =========== RESET PASSWORD ============
+  public resetPassword = asyncHandler(
+    async (req: Request, res: Response): Promise<any> => {
+      const body = resetPasswordSchema.parse(req.body);
+
+      await this.authService.resetPassword(body);
+
+      // Clear cookies and return JSON
+      return clearAuthenticationCookies(res).status(HTTPSTATUS.OK).json({
+        message: "Reset password successful",
+      });
+    }
+  );
+
+  // ================ LOGOUT ===============
+  public logout = asyncHandler(
+    async (req: Request, res: Response): Promise<any> => {
+      const sessionId = req.sessionId;
+
+      if (!sessionId) {
+        throw new NotFoundException("Session is invalid");
+      }
+
+      await this.authService.logout(sessionId);
+
+      // Clear cookies and return JSON
+      return clearAuthenticationCookies(res).status(HTTPSTATUS.OK).json({
+        message: "User logged out successfully",
       });
     }
   );
