@@ -6,6 +6,7 @@ import jwt from "jsonwebtoken";
 // Define the structure for an access token payload containing userId and sessionId.
 export type AccessTokenPayload = {
   userId: User["id"];
+  role: User["role"];
   sessionId: Session["id"];
 };
 
@@ -22,7 +23,7 @@ type SignOptionsAndSecret = SignOptions & {
 // Default JWT signing options applied to both access and refresh tokens.
 // The audience specifies that the token is for a user.
 const defaults: SignOptions = {
-  audience: ["user"],
+  audience: ["USER", "ADMIN", "MODERATOR"],
 };
 
 // Configuration for signing an access token.
