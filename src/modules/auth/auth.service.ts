@@ -83,11 +83,10 @@ export class AuthService {
         name,
         email,
         role: "USER", // Assign 'USER' role by default
+        membership: "REGULAR", //By default
         password: hashedPassword,
       },
     });
-
-    const userId = newUser.id;
 
     // Creates verification code to verify user
     const userVerificationCode = await prisma.verificationCode.create({
@@ -141,17 +140,13 @@ export class AuthService {
       );
     }
 
-    // Delete all previous sessions so db is not cluttered with previous user sessions
-    await prisma.session.deleteMany({
-      where: { userId: user.id },
-    });
-
     // Creates new session for logged in user (lasts 30 days)
     const session = await prisma.session.create({
       data: {
         userId: user.id,
         userAgent,
         expiredAt: thirtyDaysFromNow(),
+        userRole: user.role,
       },
     });
 
@@ -159,6 +154,7 @@ export class AuthService {
     const accessToken = signJwtToken({
       userId: user.id,
       sessionId: session.id,
+      role: user.role,
     });
 
     // Refreshes existing user token if old exists
@@ -221,11 +217,11 @@ export class AuthService {
     const newRefreshToken = sessionRequireRefresh
       ? signJwtToken({ sessionId: session.id }, refreshTokenSignOptions)
       : undefined;
-
     // Check access token and sign with jwt
     const accessToken = signJwtToken({
       userId: session.userId,
       sessionId: session.id,
+      role: session.userRole,
     });
 
     // Return both access and refresh tokens
@@ -390,6 +386,6 @@ export class AuthService {
 
   // =================== LOGOUT =======================
   public async logout(sessionId: string) {
-    return await prisma.session.deleteMany({ where: { id: sessionId } });
+    return await prisma.session.delete({ where: { id: sessionId } });
   }
 }
