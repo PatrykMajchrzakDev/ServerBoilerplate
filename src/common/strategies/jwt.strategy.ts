@@ -13,6 +13,7 @@ import { userService } from "@/modules/user/user.module";
 interface JwtPayload {
   userId: string;
   sessionId: string;
+  role: string;
 }
 
 // Options configuration for the JWT strategy
@@ -35,7 +36,7 @@ const options: StrategyOptionsWithRequest = {
   ]),
   secretOrKey: config.JWT_SECRET,
   // Defining the expected audience and algorithm for security
-  audience: ["user"],
+  audience: ["USER", "ADMIN", "MODERATOR"], // validate multiple roles
   algorithms: ["HS256"],
   // Allowing the request object to be passed to the callback
   passReqToCallback: true,
@@ -49,13 +50,14 @@ export const setupJwtStrategy = (passport: PassportStatic) => {
         // Fetching user from the database using the payload's userId
         const user = await userService.findUserById(payload.userId);
 
-        if (!user) {
-          // If no user is found, deny authentication
+        if (!user || user.role !== payload.role) {
+          // If no user is found or roles don't match then deny authorization
           return done(null, false);
         }
 
         // Attach the sessionId from payload to the request for later use
         req.sessionId = payload.sessionId;
+        req.userRole = payload.role;
         // Successfully authenticated
         return done(null, user);
       } catch (error) {
@@ -67,4 +69,4 @@ export const setupJwtStrategy = (passport: PassportStatic) => {
 };
 
 // Middleware to authenticate requests using JWT strategy without sessions
-export const authnticateJWT = passport.authenticate("jwt", { session: false });
+export const authenticateJWT = passport.authenticate("jwt", { session: false });
