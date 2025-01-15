@@ -11,6 +11,8 @@ import { BadRequestException } from "./utils/CatchError";
 import { ErrorCode } from "./common/enums/errorCodeEnum";
 import authRoutes from "./modules/auth/auth.routes";
 import passport from "./middleware/passport";
+import { authenticateJWT } from "./common/strategies/jwt.strategy";
+import sessionRoutes from "./modules/session/session.routes";
 
 const app = express();
 
@@ -23,7 +25,6 @@ app.use(cookieParser());
 
 // Initialize passport and session
 app.use(passport.initialize());
-// app.use(passport.session());
 
 // Automatically convert the body of any request to server as JSON
 app.use(express.json());
@@ -42,9 +43,12 @@ app.use(express.urlencoded({ extended: true }));
 // <!-- ======================== -->
 // <!-- ======== ROUTING ======= -->
 // <!-- ======================== -->
+// BASE_PATH = /api/v1
 const BASE_PATH = config.BASE_PATH;
-//
+
 app.use(`${BASE_PATH}/auth`, authRoutes);
+
+app.use(`${BASE_PATH}/session`, authenticateJWT, sessionRoutes);
 
 // TEST routes
 app.get(
