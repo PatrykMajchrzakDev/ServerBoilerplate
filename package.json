@@ -1,7 +1,7 @@
 {
   "name": "serverboilerplate",
   "version": "1.0.0",
-  "description": "Backened server boilerplate",
+  "description": "Backend server boilerplate",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
