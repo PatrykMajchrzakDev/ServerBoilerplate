@@ -13,6 +13,7 @@ import authRoutes from "./modules/auth/auth.routes";
 import passport from "./middleware/passport";
 import { authenticateJWT } from "./common/strategies/jwt.strategy";
 import sessionRoutes from "./modules/session/session.routes";
+import mfaRoutes from "./modules/mfa/mfa.routes";
 
 const app = express();
 
@@ -47,8 +48,8 @@ app.use(express.urlencoded({ extended: true }));
 const BASE_PATH = config.BASE_PATH;
 
 app.use(`${BASE_PATH}/auth`, authRoutes);
-
 app.use(`${BASE_PATH}/session`, authenticateJWT, sessionRoutes);
+app.use(`${BASE_PATH}/mfa`, mfaRoutes)
 
 // TEST routes
 app.get(
