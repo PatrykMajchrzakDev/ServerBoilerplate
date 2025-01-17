@@ -6,6 +6,7 @@ const appConfig = () => ({
   // SERVER
   NODE_ENV: getEnv("NODE_ENV", "development"),
   PORT: getEnv("PORT", "3000"),
+  DOMAIN_NAME: getEnv("DOMAIN_NAME"),
 
   // URLS
   BACKEND_BASE_URL: getEnv("BACKEND_BASE_URL", "http://localhost:3000"),
