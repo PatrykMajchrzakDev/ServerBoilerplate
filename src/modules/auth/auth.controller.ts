@@ -55,15 +55,24 @@ export class AuthController {
       });
 
       // Destructure object from auth.service.ts
-      const { user, accessToken, refreshToken, mfaRequired } =
+      const { strippedUser, accessToken, refreshToken, mfaRequired } =
         await this.authService.login(body);
 
-      // Set cookies
+      // Redirect to authorize user via MFA
+      if (mfaRequired) {
+        return res.status(HTTPSTATUS.OK).json({
+          message: "Verify MFA authentication.",
+          mfaRequired,
+          strippedUser,
+        });
+      }
+
+      // If MFA not required then just set cookies and login user
       return setAuthenticationCookies({ res, accessToken, refreshToken })
         .status(HTTPSTATUS.OK)
         .json({
           message: "User logged in successfully.",
-          user: stripUserToFrontend(user),
+          user: stripUserToFrontend(strippedUser!),
           mfaRequired,
         });
     }
