@@ -50,6 +50,7 @@ export class MfaService {
       const secret = speakeasy.generateSecret({ name: "Your QR secret" });
       secretKey = secret.base32;
 
+      // Update user table with new secret
       await prisma.account.update({
         where: { userId: user.id },
         data: {
@@ -95,6 +96,7 @@ export class MfaService {
       );
     }
 
+    // Check if user has 2FA enabled
     if (fullUserDetails.userPreferences?.enable2FA) {
       return {
         message: "MFA is already enabled ",
@@ -103,6 +105,8 @@ export class MfaService {
         },
       };
     }
+
+    // Check if provided code is valid
     const isValid = speakeasy.totp.verify({
       secret: secretKey,
       encoding: "base32",
@@ -113,11 +117,13 @@ export class MfaService {
       throw new BadRequestException("Invalid MFA code. Please try again.");
     }
 
+    // If everything OK then update user table with 2FA enabled
     const updatedUser = await prisma.userPreferences.update({
       where: { userId: user.id },
       data: { enable2FA: true },
     });
 
+    // Return info with updated table value
     return {
       message: "MFA setup completed successfully.",
       userPreferences: {
@@ -144,6 +150,7 @@ export class MfaService {
       );
     }
 
+    // Check if user has 2FA enabled
     if (!fullUserDetails.userPreferences?.enable2FA) {
       return {
         message: "MFA is not enabled",
@@ -152,6 +159,9 @@ export class MfaService {
         },
       };
     }
+
+    // Update both userPreferences and Account tables
+    // Changes 2FA to false and removes 2FA secret
     const [updatedPreferences, updatedAccount] = await prisma.$transaction([
       prisma.userPreferences.update({
         where: { userId: user.id },
@@ -167,6 +177,7 @@ export class MfaService {
       }),
     ]);
 
+    // Return successful message
     return {
       message: "MFA revoked successfully",
       userPreferences: {
@@ -177,16 +188,19 @@ export class MfaService {
 
   // ================ VERIFY MFA LOGIN ================
   public async verifyMFALogin(code: string, email: string, userAgent?: string) {
+    // Get all user info from db
     const user = await userService.fullUserDetailsByEmail(email);
 
     if (!user) {
       throw new NotFoundException("User not found");
     }
 
+    // Check if user has 2FA enabled and if 2FA secret is set
     if (!user.userPreferences?.enable2FA && !user.account?.twoFactorSecret) {
       throw new UnauthorizedException("MFA not enabled for this user");
     }
 
+    // Check if user's 2FA secret is valid
     const isValid = speakeasy.totp.verify({
       secret: user.account?.twoFactorSecret!,
       encoding: "base32",
