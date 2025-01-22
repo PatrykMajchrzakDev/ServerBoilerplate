@@ -85,6 +85,12 @@ export class AuthService {
         role: "USER", // Assign 'USER' role by default
         membership: "REGULAR", //By default
         password: hashedPassword,
+        account: {
+          create: {}, // Defaults will be used
+        },
+        userPreferences: {
+          create: {}, // Defaults will be used
+        },
       },
     });
 
@@ -111,7 +117,13 @@ export class AuthService {
   public async login(loginData: LoginDto) {
     // Destructure JSON data
     const { email, password, userAgent } = loginData;
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: {
+        account: true,
+        userPreferences: true,
+      },
+    });
 
     // Checks if user exists
     if (!user) {
@@ -122,7 +134,10 @@ export class AuthService {
     }
 
     // only local users can put in password so check if password exists
-    if (user.provider.toLowerCase() !== "local") {
+    if (
+      user.account?.provider.toLowerCase() !== "local" ||
+      user.password === null
+    ) {
       throw new BadRequestException(
         "This email is linked with 3rd Party Provider e.g. Google or Microsoft",
         ErrorCode.AUTH_EMAIL_ALREADY_EXISTS
@@ -138,6 +153,16 @@ export class AuthService {
         "Invalid email or password",
         ErrorCode.AUTH_USER_NOT_FOUND
       );
+    }
+
+    // Check if user enabled 2FA
+    if (user.userPreferences?.enable2FA) {
+      return {
+        user: null,
+        mfaRequired: true,
+        accessToken: "",
+        refreshToken: "",
+      };
     }
 
     // Creates new session for logged in user (lasts 30 days)
@@ -165,8 +190,10 @@ export class AuthService {
       refreshTokenSignOptions
     );
 
+    const { account, userPreferences, ...strippedUser } = user;
+
     return {
-      user,
+      strippedUser,
       accessToken,
       refreshToken,
       mfaRequired: false,
