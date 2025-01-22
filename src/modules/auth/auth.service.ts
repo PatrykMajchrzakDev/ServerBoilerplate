@@ -38,6 +38,7 @@ import {
   verifyEmailTemplate,
 } from "@/services/mail/templates/template";
 import { HTTPSTATUS } from "@/config/http.config";
+import { userService } from "../user/user.module";
 
 const prisma = new PrismaClient();
 
@@ -117,13 +118,7 @@ export class AuthService {
   public async login(loginData: LoginDto) {
     // Destructure JSON data
     const { email, password, userAgent } = loginData;
-    const user = await prisma.user.findUnique({
-      where: { email },
-      include: {
-        account: true,
-        userPreferences: true,
-      },
-    });
+    const user = await userService.fullUserDetailsByEmail(email);
 
     // Checks if user exists
     if (!user) {
