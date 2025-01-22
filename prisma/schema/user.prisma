@@ -3,21 +3,44 @@ model User {
     id                String             @id
     name              String             @unique
     email             String             @unique
-    password          String
+    password          String?
     role              Role               @default(USER)
     membership        Membership         @default(REGULAR)
     isEmailVerified   Boolean            @default(false)
-    enable2FA         Boolean            @default(false)
-    emailNotification Boolean            @default(true)
-    twoFactorSecret   String?
     createdAt         DateTime           @default(now())
     updatedAt         DateTime           @updatedAt
-    provider          String             @default("local")
-    googleId          String?            @unique
     sessions          Session[]
     verificationCodes VerificationCode[]
+    account           Account?           @relation("UserToAccount")
+    userPreferences   UserPreferences?   @relation("UserToUserPreferences")
 
     @@index([email])
+}
+
+// User account
+model Account {
+    id                String   @id @default(uuid())
+    userId            String   @unique
+    provider          String   @default("local")
+    providerAccountId String?
+    createdAt         DateTime @default(now())
+    updatedAt         DateTime @updatedAt
+    twoFactorSecret   String?
+    user              User     @relation("UserToAccount", fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId])
+}
+
+// User preferences
+model UserPreferences {
+    id                String  @id @default(uuid())
+    userId            String  @unique
+    enable2FA         Boolean @default(false)
+    emailNotification Boolean @default(true)
+
+    user User @relation("UserToUserPreferences", fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId])
 }
 
 // User session model
