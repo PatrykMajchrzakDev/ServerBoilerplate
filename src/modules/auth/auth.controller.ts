@@ -123,6 +123,20 @@ export class AuthController {
     }
   );
 
+  // ====== RESEND VERIFICATION EMAIL ======
+  public resendEmailVerification = asyncHandler(
+    async (req: Request, res: Response): Promise<any> => {
+      // Get email from req body
+      const email = emailSchema.parse(req.body.email);
+
+      await this.authService.resendEmailVerification(email);
+
+      return res.status(HTTPSTATUS.OK).json({
+        message: "Verification email has been sent, if provided email exists.",
+      });
+    }
+  );
+
   // ========== FORGOT PASSWORD ============
   public forgotPassword = asyncHandler(
     async (req: Request, res: Response): Promise<any> => {
