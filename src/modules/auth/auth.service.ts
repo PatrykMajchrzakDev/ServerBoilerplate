@@ -289,6 +289,67 @@ export class AuthService {
     };
   }
 
+  // ========== RESEND VERIFICATION EMAIL =============
+  public async resendEmailVerification(email: string) {
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      throw new BadRequestException(
+        "Verification email has been sent, if provided email exists."
+      );
+    }
+
+    if (user.isEmailVerified) {
+      throw new BadRequestException(
+        "Verification email has been sent, if provided email exists."
+      );
+    }
+
+    // Check mail rate limit. It's set to 2 emails per 3 or 10mins
+    // const timeAgo = threeMinutesAgo()
+    const timeAgo = tenMinutesAgo();
+    const maxAttempts = 2;
+
+    // Count how many times user in the past "time ago" created verification code emails
+    const count = await prisma.verificationCode.count({
+      where: {
+        userId: user.id,
+        type: VerificationEnum.EMAIL_VERIFICATION,
+        createdAt: { gt: timeAgo },
+      },
+    });
+
+    // If created over 2 in the last "time ago" then throw error
+    if (count >= maxAttempts) {
+      throw new HttpException(
+        "Too many requests. Try again later",
+        HTTPSTATUS.TOO_MANY_REQUESTS,
+        ErrorCode.AUTH_TOO_MANY_ATTEMPTS
+      );
+    }
+
+    // Creates verification code to verify user
+    const userVerificationCode = await prisma.verificationCode.create({
+      data: {
+        user: { connect: { id: user.id } }, // Correct relational linking
+        type: VerificationEnum.EMAIL_VERIFICATION,
+        expiresAt: fortyFiveMinutesFromNow(),
+        code: generateUniqueCode(),
+      },
+    });
+
+    // Sending verification email link
+    const verificationUrl = `${config.FRONTEND_BASE_URL}/confirm-account?code=${userVerificationCode.code}`;
+    await sendEmail({
+      to: user.email,
+      ...verifyEmailTemplate(verificationUrl),
+    });
+
+    return user;
+  }
+
   // =============== FORGOT PASSWORD ==================
   public async forgotPassword(email: string) {
     // Get user from provided email
