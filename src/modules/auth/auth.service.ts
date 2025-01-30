@@ -23,7 +23,6 @@ import {
 import { generateUniqueCode } from "@/utils/uuid";
 import { PrismaClient } from "@prisma/client";
 import crypto from "crypto";
-import jwt from "jsonwebtoken";
 import { hashValue, compareValue } from "@/utils/bcrypt";
 import { config } from "@/config/app.config";
 import {
@@ -39,6 +38,7 @@ import {
 } from "@/services/mail/templates/template";
 import { HTTPSTATUS } from "@/config/http.config";
 import { userService } from "../user/user.module";
+import { ProviderEnum } from "@/common/enums/accountProviderEnum";
 
 const prisma = new PrismaClient();
 
@@ -470,5 +470,69 @@ export class AuthService {
   // =================== LOGOUT =======================
   public async logout(sessionId: string) {
     return await prisma.session.delete({ where: { id: sessionId } });
+  }
+
+  // ================ GOOGLE OAUTH ====================
+  public async loginOrCreateAccountService(data: {
+    provider: string;
+    displayName: string;
+    providerId: string;
+    email: string;
+  }) {
+    const { providerId, provider, displayName, email } = data;
+
+    try {
+      const user = await prisma.user.findUnique({ where: { email } });
+      if (!user) {
+        // Create id for user. It is not done via uuid cause it's too long
+        let id;
+        let sameId;
+        do {
+          id = crypto.randomBytes(5).toString("hex");
+          sameId = await prisma.user.findUnique({ where: { id } });
+        } while (sameId);
+
+        // Makes sure no user with same name exists
+        let isNameUnique = false;
+        let username = displayName;
+        do {
+          const nameExists = await prisma.user.findFirst({
+            where: { name: displayName },
+          });
+          if (!nameExists) {
+            // If no user exists, the username is unique
+            isNameUnique = true;
+          } else {
+            // Append a random number (1-9999) to the username
+            const randomNumber = Math.floor(Math.random() * 10000); // Generate a number between 0-9999
+            username = `${displayName}${randomNumber}`;
+          }
+        } while (!isNameUnique);
+
+        // Create a new user
+        const newUser = await prisma.user.create({
+          data: {
+            id,
+            name: displayName,
+            email,
+            role: "USER", // Assign 'USER' role by default
+            membership: "REGULAR", //By default
+            account: {
+              create: {
+                provider: provider,
+                providerAccountId: providerId,
+              }, // Defaults will be used
+            },
+            userPreferences: {
+              create: {}, // Defaults will be used
+            },
+          },
+        });
+        return { user: newUser };
+      }
+      return { user };
+    } catch (error) {
+      throw error;
+    }
   }
 }
