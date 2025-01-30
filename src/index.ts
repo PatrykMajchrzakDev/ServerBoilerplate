@@ -3,12 +3,11 @@ import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
 import "dotenv/config";
 import cookieParser from "cookie-parser";
+import session from "express-session";
 import { config } from "@/config/app.config";
 import { errorHandler } from "@/middleware/errorHandler";
 import { HTTPSTATUS } from "@/config/http.config";
 import { asyncHandler } from "@/middleware/asyncHandler";
-import { BadRequestException } from "./utils/CatchError";
-import { ErrorCode } from "./common/enums/errorCodeEnum";
 import authRoutes from "./modules/auth/auth.routes";
 import passport from "./middleware/passport";
 import { authenticateJWT } from "./common/strategies/jwt.strategy";
@@ -24,8 +23,22 @@ const app = express();
 //Cookies
 app.use(cookieParser());
 
+app.use(
+  session({
+    resave: true,
+    saveUninitialized: true,
+    secret: config.SESSION_SECRET,
+    name: "sessCookie", // change the cookie name for additional security in production
+    cookie: {
+      maxAge: 1209600000, // Two weeks in milliseconds
+      secure: config.NODE_ENV === "production",
+    },
+  })
+);
+
 // Initialize passport and session
 app.use(passport.initialize());
+app.use(passport.session());
 
 // Automatically convert the body of any request to server as JSON
 app.use(express.json());
@@ -44,12 +57,12 @@ app.use(express.urlencoded({ extended: true }));
 // <!-- ======================== -->
 // <!-- ======== ROUTING ======= -->
 // <!-- ======================== -->
-// BASE_PATH = /api/v1
-const BASE_PATH = config.BASE_PATH;
+// BACKEND_API_PATH = /api/v1
+const BACKEND_API_PATH = config.BACKEND_API_PATH;
 
-app.use(`${BASE_PATH}/auth`, authRoutes);
-app.use(`${BASE_PATH}/session`, authenticateJWT, sessionRoutes);
-app.use(`${BASE_PATH}/mfa`, mfaRoutes)
+app.use(`${BACKEND_API_PATH}/auth`, authRoutes);
+app.use(`${BACKEND_API_PATH}/session`, authenticateJWT, sessionRoutes);
+app.use(`${BACKEND_API_PATH}/mfa`, mfaRoutes);
 
 // TEST routes
 app.get(
