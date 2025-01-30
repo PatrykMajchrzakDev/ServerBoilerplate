@@ -8,7 +8,7 @@ type CookiePayloadType = {
   refreshToken: string;
 };
 
-export const REFRESH_PATH = `${config.BASE_PATH}/auth/refresh`;
+export const REFRESH_PATH = `${config.BACKEND_API_PATH}/auth/refresh`;
 
 // Cookie options when site is in PRODUCTION state
 const defaults: CookieOptions = {
