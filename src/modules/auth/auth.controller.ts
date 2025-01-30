@@ -19,6 +19,7 @@ import {
   setAuthenticationCookies,
 } from "@/utils/cookie";
 import { NotFoundException, UnauthorizedException } from "@/utils/CatchError";
+import { config } from "@/config/app.config";
 
 // Parent class invoking auth
 export class AuthController {
@@ -180,6 +181,23 @@ export class AuthController {
       return clearAuthenticationCookies(res).status(HTTPSTATUS.OK).json({
         message: "User logged out successfully",
       });
+    }
+  );
+
+  // =========== GOOGLE CALLBACK ===========
+  public googleLoginCallback = asyncHandler(
+    async (req: Request, res: Response): Promise<any> => {
+      const user = req.user;
+
+      // If user was not provided then redirect to frontend error screen
+      if (!user) {
+        return res.redirect(
+          `${config.FRONTEND_GOOGLE_CALLBACK_URL}?status=failure`
+        );
+      }
+
+      // If OK redirect to dashboard
+      return res.redirect(`${config.FRONTEND_BASE_URL}/dashboard`);
     }
   );
 }
