@@ -405,6 +405,14 @@ export class AuthService {
       throw new NotFoundException("User not found");
     }
 
+    // If user has PROVIDER different than EMAIL
+    if (!user.password) {
+      throw new BadRequestException(
+        "User was registered via provider",
+        ErrorCode.AUTH_EMAIL_ALREADY_EXISTS
+      );
+    }
+
     // Check mail rate limit. It's set to 2 emails per 3 or 10mins
     // const timeAgo = threeMinutesAgo()
     const timeAgo = tenMinutesAgo();
@@ -584,6 +592,7 @@ export class AuthService {
         });
         return { user: newUser };
       }
+
       return { user };
     } catch (error) {
       throw error;
