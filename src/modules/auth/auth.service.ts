@@ -39,6 +39,12 @@ import {
 import { HTTPSTATUS } from "@/config/http.config";
 import { userService } from "../user/user.module";
 import { ProviderEnum } from "@/common/enums/accountProviderEnum";
+import {
+  registerSchema,
+  loginSchema,
+  emailSchema,
+  passwordSchema,
+} from "@/common/validation/auth.validator";
 
 const prisma = new PrismaClient();
 
@@ -48,6 +54,15 @@ export class AuthService {
   // ==================== REGISTER ====================
   public async register(registerData: RegisterDto) {
     const { name, email, password } = registerData;
+
+    const validatedData = registerSchema.parse(registerData);
+
+    if (!validatedData) {
+      throw new BadRequestException(
+        "Register validation unsuccessful",
+        ErrorCode.VALIDATION_ERROR
+      );
+    }
 
     // Checks if same user does not already exist
     const existingEmail = await prisma.user.findUnique({ where: { email } });
@@ -87,7 +102,9 @@ export class AuthService {
         membership: "REGULAR", //By default
         password: hashedPassword,
         account: {
-          create: {}, // Defaults will be used
+          create: {
+            provider: ProviderEnum.EMAIL,
+          }, // Defaults will be used
         },
         userPreferences: {
           create: {}, // Defaults will be used
@@ -106,7 +123,7 @@ export class AuthService {
     });
 
     // Sending verification email link
-    const verificationUrl = `${config.FRONTEND_BASE_URL}/confirm-account?code=${userVerificationCode.code}`;
+    const verificationUrl = `${config.FRONTEND_BASE_URL}/verify-email?code=${userVerificationCode.code}`;
     await sendEmail({
       to: newUser.email,
       ...verifyEmailTemplate(verificationUrl),
@@ -118,6 +135,16 @@ export class AuthService {
   public async login(loginData: LoginDto) {
     // Destructure JSON data
     const { email, password, userAgent } = loginData;
+
+    const validatedData = loginSchema.parse(loginData);
+
+    if (!validatedData) {
+      throw new BadRequestException(
+        "Login validation unsuccessful",
+        ErrorCode.VALIDATION_ERROR
+      );
+    }
+
     const user = await userService.fullUserDetailsByEmail(email);
 
     // Checks if user exists
@@ -128,9 +155,9 @@ export class AuthService {
       );
     }
 
-    // only local users can put in password so check if password exists
+    // only email users can put in password so check if password exists
     if (
-      user.account?.provider.toLowerCase() !== "local" ||
+      user.account?.provider !== ProviderEnum.EMAIL ||
       user.password === null
     ) {
       throw new BadRequestException(
@@ -291,6 +318,15 @@ export class AuthService {
 
   // ========== RESEND VERIFICATION EMAIL =============
   public async resendEmailVerification(email: string) {
+    const validatedData = emailSchema.parse(email);
+
+    if (!validatedData) {
+      throw new BadRequestException(
+        "Resend email validation unsuccessful",
+        ErrorCode.VALIDATION_ERROR
+      );
+    }
+
     const user = await prisma.user.findUnique({
       where: { email },
     });
@@ -341,7 +377,7 @@ export class AuthService {
     });
 
     // Sending verification email link
-    const verificationUrl = `${config.FRONTEND_BASE_URL}/confirm-account?code=${userVerificationCode.code}`;
+    const verificationUrl = `${config.FRONTEND_BASE_URL}/verify-email?code=${userVerificationCode.code}`;
     await sendEmail({
       to: user.email,
       ...verifyEmailTemplate(verificationUrl),
@@ -352,12 +388,29 @@ export class AuthService {
 
   // =============== FORGOT PASSWORD ==================
   public async forgotPassword(email: string) {
+    const validatedData = emailSchema.parse(email);
+
+    if (!validatedData) {
+      throw new BadRequestException(
+        "Forgot password validation unsuccessful",
+        ErrorCode.VALIDATION_ERROR
+      );
+    }
+
     // Get user from provided email
     const user = await prisma.user.findUnique({ where: { email } });
 
     // Return error if user does not exist
     if (!user) {
       throw new NotFoundException("User not found");
+    }
+
+    // If user has PROVIDER different than EMAIL
+    if (!user.password) {
+      throw new BadRequestException(
+        "User was registered via provider",
+        ErrorCode.AUTH_EMAIL_ALREADY_EXISTS
+      );
     }
 
     // Check mail rate limit. It's set to 2 emails per 3 or 10mins
@@ -421,6 +474,15 @@ export class AuthService {
 
   // ================ RESET PASSWORD ==================
   public async resetPassword({ password, verificationCode }: resetPasswordDto) {
+    const validatedData = passwordSchema.parse(password);
+
+    if (!validatedData) {
+      throw new BadRequestException(
+        "Reset password validation unsuccessful",
+        ErrorCode.VALIDATION_ERROR
+      );
+    }
+
     // find code and check if it's code for password reset
     // and if it hasn't expired
     const validCode = await prisma.verificationCode.findUnique({
@@ -513,7 +575,7 @@ export class AuthService {
         const newUser = await prisma.user.create({
           data: {
             id,
-            name: displayName,
+            name: username,
             email,
             role: "USER", // Assign 'USER' role by default
             membership: "REGULAR", //By default
@@ -530,6 +592,7 @@ export class AuthService {
         });
         return { user: newUser };
       }
+
       return { user };
     } catch (error) {
       throw error;

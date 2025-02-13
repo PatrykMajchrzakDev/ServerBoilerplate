@@ -10,7 +10,7 @@ const authRoutes = Router();
 
 const failedUrl = `${config.FRONTEND_GOOGLE_CALLBACK_URL}?status=failure`;
 
-// ================= LOCAL ROUTES ==================
+// ================= EMAIL ROUTES ==================
 authRoutes.post("/register", authController.register);
 authRoutes.post("/login", authController.login);
 authRoutes.post("/verify/email", authController.verifyEmail);
