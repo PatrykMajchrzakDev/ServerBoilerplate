@@ -123,7 +123,7 @@ export class AuthService {
     });
 
     // Sending verification email link
-    const verificationUrl = `${config.FRONTEND_BASE_URL}/confirm-account?code=${userVerificationCode.code}`;
+    const verificationUrl = `${config.FRONTEND_BASE_URL}/verify-email?code=${userVerificationCode.code}`;
     await sendEmail({
       to: newUser.email,
       ...verifyEmailTemplate(verificationUrl),
@@ -377,7 +377,7 @@ export class AuthService {
     });
 
     // Sending verification email link
-    const verificationUrl = `${config.FRONTEND_BASE_URL}/confirm-account?code=${userVerificationCode.code}`;
+    const verificationUrl = `${config.FRONTEND_BASE_URL}/verify-email?code=${userVerificationCode.code}`;
     await sendEmail({
       to: user.email,
       ...verifyEmailTemplate(verificationUrl),
