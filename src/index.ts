@@ -48,7 +48,7 @@ app.use(
   cors({
     // credentials prop handles sending cookie credentials to client
     credentials: true,
-    origin: config.BACKEND_BASE_URL,
+    origin: config.FRONTEND_BASE_URL,
   })
 );
 //Middleware that parses info sent to backend and changes it to human readable format
