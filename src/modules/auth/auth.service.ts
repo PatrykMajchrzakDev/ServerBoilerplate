@@ -21,7 +21,7 @@ import {
   thirtyDaysFromNow,
 } from "@/utils/date-time";
 import { generateUniqueCode } from "@/utils/uuid";
-import { PrismaClient } from "@prisma/client";
+import { Membership, PrismaClient } from "@prisma/client";
 import crypto from "crypto";
 import { hashValue, compareValue } from "@/utils/bcrypt";
 import { config } from "@/config/app.config";
@@ -45,6 +45,7 @@ import {
   emailSchema,
   passwordSchema,
 } from "@/common/validation/auth.validator";
+import { UserRole } from "@/common/enums/userRoleEnum";
 
 const prisma = new PrismaClient();
 
@@ -98,8 +99,8 @@ export class AuthService {
         id,
         name,
         email,
-        role: "USER", // Assign 'USER' role by default
-        membership: "REGULAR", //By default
+        role: UserRole.USER, // Assign 'USER' role by default
+        membership: Membership.REGULAR, //By default
         password: hashedPassword,
         account: {
           create: {
@@ -577,8 +578,8 @@ export class AuthService {
             id,
             name: username,
             email,
-            role: "USER", // Assign 'USER' role by default
-            membership: "REGULAR", //By default
+            role: UserRole.USER, // Assign 'USER' role by default
+            membership: Membership.REGULAR, //By default
             account: {
               create: {
                 provider: provider,
