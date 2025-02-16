@@ -19,6 +19,7 @@ export class SessionController {
     if (!userId) {
       throw new NotFoundException("Could not find user sessions");
     }
+    // Session ID from req body from JWT
     const sessionId = req.sessionId;
 
     // Fetch all active sessions for the user
@@ -37,7 +38,7 @@ export class SessionController {
 
   // =============== GET SESSION ===============
   public getSession = asyncHandler(async (req: Request, res: Response) => {
-    // Session ID from req body
+    // Session ID from req body from JWT
     const sessionId = req?.sessionId;
 
     // Error if no session id
@@ -48,7 +49,6 @@ export class SessionController {
     // Return user object
     const { user } = await this.sessionService.getSessionById(sessionId);
     return res.status(HTTPSTATUS.OK).json({
-      message: "Session retrieved successfully",
       user,
     });
   });
