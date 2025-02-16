@@ -25,31 +25,63 @@ export class SessionService {
 
   // ============== GET SINGLE SESSION ================
   public async getSessionById(sessionId: string) {
-    // Gets single user's session
     const session = await prisma.session.findUnique({
       where: { id: sessionId },
       select: {
         user: {
           select: {
+            // User fields (all except password)
             id: true,
             name: true,
             email: true,
             role: true,
             membership: true,
+            isEmailVerified: true,
             createdAt: true,
             updatedAt: true,
+
+            // Account relation (all except twoFactorSecret, id and createdAt)
+            account: {
+              select: {
+                userId: true,
+                provider: true,
+                providerAccountId: true,
+              },
+            },
+
+            // UserPreferences relation (all fields but id)
+            userPreferences: {
+              select: {
+                userId: true,
+                enable2FA: true,
+                emailNotification: true,
+              },
+            },
           },
         },
-        expiredAt: false, // Excluding `expiredAt`
+        // Session related fields
+        userId: true,
+        userAgent: true,
+        createdAt: true,
+        userRole: true,
       },
     });
 
-    // Error handling
     if (!session) {
       throw new NotFoundException("Session not found");
     }
 
-    return { user: session.user };
+    return {
+      user: {
+        ...session.user,
+        // Explicitly exclude password even if not selected
+        account: {
+          ...session.user.account,
+          // Explicitly exclude twoFactorSecret even if not selected
+          twoFactorSecret: undefined,
+        },
+      },
+    };
   }
 
   // ================ DELETE SESSION ==================
